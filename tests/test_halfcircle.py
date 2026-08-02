@@ -131,3 +131,99 @@ def test_per_arc_styling_length_is_checked(toy):
     flow, nodes = toy
     with pytest.raises(ValueError, match="flow_color"):
         halfcircle(flow, nodes, flow_color=["red", "blue"])   # 3 arcs, 2 colors
+
+
+# ── significance testing ──────────────────────────────────────────────────
+
+def test_random_ordering_is_not_significant():
+    """A meaningless ordering should not beat chance — that is the control."""
+    from halfcircle import order_significance
+    import numpy as np
+
+    rng = np.random.default_rng(0)
+    names = [f"n{i}" for i in range(12)]
+    flow = pd.DataFrame({"O": rng.choice(names, 60), "D": rng.choice(names, 60),
+                         "v": rng.random(60)})
+    res = order_significance(flow, names, n_permutations=199, random_state=0)
+    assert 0 < res.p_value <= 1
+    assert res.p_value > 0.05          # random data, arbitrary order → no signal
+
+
+def test_engineered_ordering_is_significant():
+    """Long flows all running the same way up the ordering are a real signal.
+
+    Note the arcs have to *span* the ordering: a chain of neighbour-to-neighbour
+    flows draws tiny half circles whose centroids sit near the origin no matter
+    which way they point, so distance alone would not detect it.
+    """
+    from halfcircle import order_significance
+
+    names = [f"n{i}" for i in range(12)]
+    rows = [(names[i], names[i + 6], 1.0) for i in range(6)]    # first half → second half
+    flow = pd.DataFrame(rows, columns=["O", "D", "v"])
+    res = order_significance(flow, names, n_permutations=199, random_state=0)
+    assert res.p_value < 0.05
+    assert res.distance > res.null_mean
+
+
+def test_p_value_never_reaches_zero():
+    from halfcircle import order_significance
+    names = list("ABCDE")
+    flow = pd.DataFrame({"O": ["A", "B", "C"], "D": ["B", "C", "D"], "v": [1.0, 1.0, 1.0]})
+    res = order_significance(flow, names, n_permutations=99, random_state=1)
+    assert res.p_value >= 1 / (99 + 1)
+
+
+def test_identical_flows_are_not_distinguishable():
+    from halfcircle import compare_flows
+    names = list("ABCDE")
+    f = pd.DataFrame({"O": ["A", "B", "C", "D"], "D": ["B", "C", "D", "E"],
+                      "v": [1.0, 2.0, 3.0, 4.0]})
+    res = compare_flows(f, f.copy(), names, n_permutations=199, random_state=0)
+    assert res.separation == pytest.approx(0.0, abs=1e-12)
+    assert res.p_value > 0.05
+
+
+def test_opposite_flows_are_distinguishable():
+    from halfcircle import compare_flows
+    names = [f"n{i}" for i in range(10)]
+    fwd = pd.DataFrame([(names[i], names[i + 5], 1.0) for i in range(5)],
+                       columns=["O", "D", "v"])
+    rev = pd.DataFrame([(names[i + 5], names[i], 1.0) for i in range(5)],
+                       columns=["O", "D", "v"])
+    res = compare_flows(fwd, rev, names, n_permutations=199, random_state=0,
+                        label_a="forward", label_b="reverse")
+    assert res.separation > 0.1        # mirrored arcs land on opposite sides
+    assert res.p_value < 0.05
+
+
+# ── time series ───────────────────────────────────────────────────────────
+
+def test_track_reports_movement_between_periods():
+    from halfcircle import track
+    names = list("ABCDE")
+    p1 = pd.DataFrame({"O": ["A"], "D": ["E"], "v": [1.0]})
+    p2 = pd.DataFrame({"O": ["E"], "D": ["A"], "v": [1.0]})
+    df = track({"t1": p1, "t2": p2}, names)
+    assert list(df["period"]) == ["t1", "t2"]
+    assert np.isnan(df.loc[0, "step"])              # nothing to compare the first to
+    assert df.loc[1, "step"] > 0                    # the reversal moved the centre
+
+
+def test_track_splits_skew_and_spread_axes():
+    from halfcircle import track
+    names = list("ABCDE")
+    f = pd.DataFrame({"O": ["A"], "D": ["E"], "v": [1.0]})
+    h = track({"p": f}, names, orientation="horizontal")
+    v = track({"p": f}, names, orientation="vertical")
+    assert h.loc[0, "skew_axis"] == h.loc[0, "y"]   # horizontal: direction reads on y
+    assert v.loc[0, "skew_axis"] == v.loc[0, "x"]   # vertical: direction reads on x
+
+
+def test_plot_track_runs():
+    from halfcircle import plot_track
+    names = list("ABCDE")
+    periods = {"t1": pd.DataFrame({"O": ["A"], "D": ["E"], "v": [1.0]}),
+               "t2": pd.DataFrame({"O": ["B"], "D": ["D"], "v": [2.0]})}
+    ax, df = plot_track(periods, names)
+    assert len(df) == 2

@@ -16,12 +16,16 @@ A Python rewrite of the R package of the same name
 from .layout import Arc, arc_points, flow_arcs, node_positions
 from .stats import MeanCenter, compare_orders, mean_center
 from .plot import halfcircle, inspect, plot_mean_center
+from .testing import FlowComparison, OrderTest, compare_flows, order_significance
+from .series import plot_track, track
 from .datasets import load_flow, load_nodes, load_trade
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 __all__ = [
     "halfcircle", "inspect", "plot_mean_center",
     "mean_center", "compare_orders", "MeanCenter",
+    "order_significance", "compare_flows", "OrderTest", "FlowComparison",
+    "track", "plot_track",
     "node_positions", "arc_points", "flow_arcs", "Arc",
     "load_trade", "load_flow", "load_nodes",
 ]

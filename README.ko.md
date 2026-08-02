@@ -67,6 +67,55 @@ inspect(flow, {"1인당 GDP": node.sort_values("gdpc", ascending=False),
 
 각 패널에 평균중심까지의 거리가 표시되고 그 위치가 붉은 점으로 찍힙니다.
 
+## 이 패턴이 진짜인가
+
+다이어그램은 언제나 무언가처럼 보입니다. `order_significance`는 그 정렬이 아무 정렬보다 나은지 묻습니다 — 노드를 수백 번 무작위로 섞어 평균중심 거리의 귀무분포를 만들고, 실제 정렬이 그 안에서 어디에 있는지 알려줍니다.
+
+```python
+from halfcircle import order_significance
+
+res = order_significance(flow, node.sort_values("income_level"),
+                         orientation="vertical", n_permutations=999,
+                         drop_missing=True)
+print(res.summary())
+```
+
+```
+mean centre 0.419 from origin (random orderings: 0.115 ± 0.073) — p = 0.0033, stronger than chance
+```
+
+x·y 성분도 따로 검정합니다. 둘은 뜻이 다르기 때문입니다. `orientation="vertical"`에서 `p_x`는 **방향 편향** — 물량이 정렬을 따라 한쪽으로 얼마나 일관되게 흐르는지 — 을, `p_y`는 **정렬의 어느 구간에** 흐름이 몰리는지를 봅니다. 위 결과는 `p_y = 0.003`인데 `p_x = 0.27`입니다. 소득수준은 *어느 나라가* 교역하는지를 가르지만 방향까지 정하지는 않는다는 뜻입니다.
+
+### 두 흐름이 다른가
+
+곡물과 채소, 또는 같은 품목의 10년 전과 후 — 같은 질문이고 같은 검정입니다. `compare_flows`는 두 표의 모든 엣지를 합친 뒤 집단 크기를 유지한 채 무작위로 다시 나누고, 두 평균중심이 실제만큼 벌어지는 일이 얼마나 흔한지 봅니다.
+
+```python
+from halfcircle import compare_flows
+
+res = compare_flows(vegetables, cereals, node.sort_values("income_level"),
+                    label_a="vegetables", label_b="cereals",
+                    orientation="vertical", drop_missing=True)
+print(res.summary())
+```
+
+```
+vegetables (0.419) and cereals (0.225) differ: centres 0.237 apart, p = 0.0167
+```
+
+## 시간에 따른 변화 추적
+
+Park, Munroe, Xiao (2023)는 곡물 교역 40년을 시기별 다이어그램으로 읽었습니다. `track`은 그 비교를 수치로 만듭니다 — 각 시기가 평균중심 한 점으로 압축되고, 그 점들이 그리는 궤적이 곧 발견입니다.
+
+```python
+from halfcircle import track, plot_track
+
+periods = {"1988-90": f1, "1998-00": f2, "2008-10": f3, "2018-20": f4}
+track(periods, node.sort_values("income_level"), orientation="vertical")
+```
+
+각 행에 평균중심, 원점과의 거리, 직전 시기 대비 이동량, 그리고 두 성분을 나눈 `skew_axis`(방향 편향)와 `spread_axis`(정렬 내 위치)가 담깁니다. `plot_track`은 그 궤적을 그리되 나중 시기일수록 점을 크게 찍습니다.
+
 ## 함수
 
 | 함수 | 하는 일 |
@@ -76,16 +125,64 @@ inspect(flow, {"1인당 GDP": node.sort_values("gdpc", ascending=False),
 | `mean_center(flow, nodes, ...)` | 모든 반원의 가중·비가중 평균중심 |
 | `compare_orders(flow, orders, ...)` | 여러 정렬의 평균중심을 거리순으로 비교 |
 | `plot_mean_center(flow, nodes, ...)` | 다이어그램을 평균중심 두 점으로 축약 |
+| `order_significance(flow, nodes, ...)` | 순열검정: 이 정렬이 무작위보다 나은가 |
+| `compare_flows(a, b, nodes, ...)` | 순열검정: 두 흐름의 구조가 다른가 |
+| `track(periods, nodes, ...)` | 시기별 평균중심과 이동량 |
+| `plot_track(periods, nodes, ...)` | 평균중심이 그리는 궤적 |
 | `node_positions`, `arc_points`, `flow_arcs` | 기하 계산만 — 직접 그리고 싶을 때 |
 | `load_trade()`, `load_flow()`, `load_nodes()` | 동봉된 예제 데이터 |
 
 `flow_color`, `flow_width`, `node_color`, `labels`는 R 패키지와 같이 단일 값 또는 행마다 하나씩 받습니다. 속성별로 색을 나누거나 특정 노드만 강조할 수 있습니다.
 
+## 사용 예시
+
+**한 나라가 걸린 흐름만 강조**
+
 ```python
-# 한 나라가 걸린 흐름만 강조
-colors = ["crimson" if "China" in (o, d) else "lightgray"
+colors = ["crimson" if "China" in (o, d) else "#dddddd"
           for o, d in zip(flow["O"], flow["D"])]
 halfcircle(flow, node, flow_color=colors, orientation="vertical", labels=False)
+```
+
+**출발지 속성별로 색 나누기**
+
+```python
+palette = {"1. High income": "#22abcb", "2. Upper middle income": "#4eb6ad",
+           "3. Middle income": "#86c388", "4. Lower middle income": "#adcd6c",
+           "5. Low income": "#dad84f"}
+lookup = node.set_index("country")["income_level"].map(palette)
+halfcircle(flow, node, flow_color=[lookup.get(o, "gray") for o in flow["O"]],
+           orientation="vertical", labels=False)
+```
+
+**보고 싶은 나라만 이름 붙이기**
+
+```python
+watch = {"China", "United States", "Brazil"}
+halfcircle(flow, node, labels=[n if n in watch else "" for n in node["country"]],
+           label_size=7, orientation="vertical")
+```
+
+**품목별로 나란히 비교**
+
+```python
+inspect({"채소": veg, "밀": wheat, "대두": soy}, ...)
+```
+
+**matplotlib 없이 기하만 쓰기**
+
+```python
+from halfcircle import flow_arcs
+for arc in flow_arcs(flow, node, orientation="vertical"):
+    ...  # arc.x, arc.y, arc.volume, arc.radius — 원하는 렌더러에 넘기면 됩니다
+```
+
+## R 원본 패키지
+
+2018년 CRAN 배포본이 아카이브돼 있어, 소스 tarball을 [`r-legacy/`](r-legacy/)에 함께 보관했습니다. 그대로 설치해 쓸 수 있습니다.
+
+```r
+install.packages("r-legacy/halfcircle_0.1.0.tar.gz", repos = NULL, type = "source")
 ```
 
 ## 알아둘 점
@@ -100,7 +197,9 @@ halfcircle(flow, node, flow_color=colors, orientation="vertical", labels=False)
 
 ## 참고문헌
 
-Xiao, N. and Chun, Y. (2009). Visualizing migration flows using kriskograms. *Cartography and Geographic Information Science*, 36(2), 183–191. https://doi.org/10.1559/152304009788188763
+Park, S., Munroe, D. K. and Xiao, N. (2023). Visualizing economic drivers of virtual land trade: A case study of global cereals trade. *Environment and Planning B: Urban Analytics and City Science*, 50(9). https://doi.org/10.1177/23998083231177057 — 곡물 교역 40년에 반원 다이어그램을 적용한 연구.
+
+Xiao, N. and Chun, Y. (2009). Visualizing migration flows using kriskograms. *Cartography and Geographic Information Science*, 36(2), 183–191. https://doi.org/10.1559/152304009788188763 — 이 패키지가 구현하는 방법론.
 
 ## 만든 사람
 
