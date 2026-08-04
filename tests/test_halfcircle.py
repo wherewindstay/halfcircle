@@ -7,6 +7,7 @@ import matplotlib
 matplotlib.use("Agg")
 
 from halfcircle import (arc_points, compare_orders, flow_arcs, halfcircle, inspect,
+                        load_faostat, load_faostat_flow, load_faostat_nodes,
                         load_trade, mean_center, node_positions, plot_mean_center)
 
 
@@ -112,6 +113,71 @@ def test_example_data_loads_and_matches_the_r_package():
     assert node.columns[0] == "country"
 
 
+# ── the FAOSTAT dataset ───────────────────────────────────────────────────────
+
+def test_faostat_data_loads():
+    flow, node = load_faostat_flow(), load_faostat_nodes()
+    assert flow.shape == (22907, 5)
+    assert list(flow.columns) == ["O", "D", "item", "year", "volume"]
+    assert node.shape == (242, 6)
+    assert node.columns[0] == "country"
+    assert sorted(flow["item"].unique()) == ["Coffee, green", "Wheat"]
+    assert sorted(flow["year"].unique()) == [2000, 2005, 2010, 2015, 2020, 2024]
+
+
+def test_faostat_excludes_the_aggregate_china_code():
+    """FAOSTAT code 351 sums the mainland, Hong Kong, Macao and Taiwan.
+
+    Left in alongside the parts it reports, one country would be counted twice.
+    """
+    names = set(load_faostat_nodes()["country"])
+    assert "China" not in names
+    assert "China, mainland" in names
+
+
+def test_faostat_selection_narrows_to_the_three_plotting_columns():
+    flow, node = load_faostat("wheat", 2024)
+    assert list(flow.columns) == ["O", "D", "volume"]
+    assert set(node["country"]) == set(flow["O"]) | set(flow["D"])
+
+    both, _ = load_faostat()                      # unfiltered keeps item/year
+    assert "item" in both.columns and "year" in both.columns
+
+
+def test_faostat_filters_do_what_they_say():
+    flow, _ = load_faostat("coffee", 2020, min_volume=500)
+    assert flow["volume"].min() >= 500
+
+    small, node = load_faostat("wheat", 2024, top_k=20)
+    assert len(set(small["O"]) | set(small["D"])) <= 20
+    assert len(node) <= 20
+
+
+@pytest.mark.parametrize("kwargs", [{"item": "rice", "year": 2024},
+                                    {"item": "wheat", "year": 2021}])
+def test_faostat_rejects_what_it_does_not_have(kwargs):
+    with pytest.raises(ValueError, match="must be one of"):
+        load_faostat(**kwargs)
+
+
+def test_faostat_wheat_and_coffee_lean_opposite_ways_on_income():
+    """The reason both crops ship: they are a contrast, not two of the same.
+
+    Coffee runs from poorer growers to richer buyers, so its mean centre sits on
+    the opposite side of the income axis from wheat's.
+    """
+    node = load_faostat_nodes().dropna(subset=["gdpc"])
+    order = node.sort_values("gdpc", ascending=False)
+    wheat, _ = load_faostat("wheat", 2024, min_volume=1000)
+    coffee, _ = load_faostat("coffee", 2024, min_volume=500)
+
+    x_wheat = mean_center(wheat, order, orientation="vertical",
+                          drop_missing=True).x_weighted
+    x_coffee = mean_center(coffee, order, orientation="vertical",
+                           drop_missing=True).x_weighted
+    assert x_coffee < 0 < x_wheat
+
+
 def test_plotting_runs_end_to_end():
     flow, node = load_trade()
     sub = flow.loc[flow["vegetable"] > 5000, ["O", "D", "vegetable"]]
@@ -131,6 +197,54 @@ def test_per_arc_styling_length_is_checked(toy):
     flow, nodes = toy
     with pytest.raises(ValueError, match="flow_color"):
         halfcircle(flow, nodes, flow_color=["red", "blue"])   # 3 arcs, 2 colors
+
+
+def test_arcs_remember_which_flow_row_they_came_from():
+    nodes = pd.DataFrame({"n": ["A", "B", "C"]})
+    flow = pd.DataFrame({"O": ["A", "Z", "B"],
+                         "D": ["B", "A", "C"],
+                         "v": [1.0, 9.0, 2.0]})
+    arcs = flow_arcs(flow, nodes, drop_missing=True)
+    assert [a.row for a in arcs] == [0, 2]                    # the Z row is gone
+
+
+def test_per_arc_styling_may_be_given_per_flow_row():
+    """The natural thing to write is one colour per row of the flow table.
+
+    Rows get skipped, so that list is longer than the arcs — it must be selected
+    down, not zipped blindly, or every colour after the first gap is wrong.
+    """
+    nodes = pd.DataFrame({"n": ["A", "B", "C"]})
+    flow = pd.DataFrame({"O": ["A", "Z", "B"],
+                         "D": ["B", "A", "C"],
+                         "v": [1.0, 9.0, 2.0]})
+    ax = halfcircle(flow, nodes, flow_color=["red", "green", "blue"],
+                    drop_missing=True)
+    assert [line.get_color() for line in ax.lines] == ["red", "blue"]
+
+
+def test_labels_can_be_a_set_of_names():
+    nodes = pd.DataFrame({"n": ["A", "B", "C"]})
+    flow = pd.DataFrame({"O": ["A"], "D": ["C"], "v": [1.0]})
+    ax = halfcircle(flow, nodes, labels={"B"})
+    assert [t.get_text() for t in ax.texts] == ["B"]
+
+
+def test_a_label_set_survives_reordering():
+    """`inspect` sorts each panel differently, so positional labels would drift."""
+    nodes = pd.DataFrame({"n": ["A", "B", "C"]})
+    flow = pd.DataFrame({"O": ["A"], "D": ["C"], "v": [1.0]})
+    _, axes = inspect(flow, {"fwd": nodes, "rev": nodes.iloc[::-1]}, labels={"A"})
+    for ax in axes:
+        assert [t.get_text() for t in ax.texts] == ["A"]
+
+
+def test_four_panels_are_laid_out_two_by_two():
+    nodes = pd.DataFrame({"n": ["A", "B", "C"]})
+    flow = pd.DataFrame({"O": ["A"], "D": ["C"], "v": [1.0]})
+    fig, axes = inspect(flow, {k: nodes for k in "abcd"})
+    assert len(axes) == 4
+    assert len(fig.axes) == 4                    # 2x2, not 3+1 with two blanks
 
 
 # ── significance testing ──────────────────────────────────────────────────

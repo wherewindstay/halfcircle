@@ -50,6 +50,7 @@ class Arc:
     y: np.ndarray
     radius: float          # signed: > 0 when the origin sits to the right
     centre: float          # midpoint of the two nodes on the centre line
+    row: int = -1          # which row of the original flow table this came from
 
 
 def arc_points(x_origin: float, x_dest: float, n: int = 200,
@@ -74,6 +75,11 @@ def flow_arcs(flow: pd.DataFrame, nodes, *, orientation: str = "horizontal",
 
     ``flow`` is read positionally: origin, destination, volume — matching the
     original R package, so existing data files work unchanged.
+
+    Rows can be skipped — self-flows, and (under ``drop_missing``) flows whose
+    endpoints are not in ``nodes`` — so the result is generally shorter than
+    ``flow``. Each Arc records which row it came from in ``.row``, which is how
+    per-arc styling stays aligned with the table the caller passed in.
     """
     if flow.shape[1] < 3:
         raise ValueError("flow needs at least three columns: origin, destination, volume")
@@ -89,14 +95,15 @@ def flow_arcs(flow: pd.DataFrame, nodes, *, orientation: str = "horizontal",
                 " — pass drop_missing=True to skip them")
 
     arcs: list[Arc] = []
-    for oi, di, vi in zip(o.astype(str), d.astype(str), v):
+    for row, (oi, di, vi) in enumerate(zip(o.astype(str), d.astype(str), v)):
         if oi not in pos.index or di not in pos.index:
             continue
         xo, xd = pos[oi], pos[di]
         if xo == xd:
             continue
         x, y = arc_points(xo, xd, n=n, orientation=orientation)
-        arcs.append(Arc(oi, di, float(vi), x, y, (xo - xd) / 2.0, (xo + xd) / 2.0))
+        arcs.append(Arc(oi, di, float(vi), x, y,
+                        (xo - xd) / 2.0, (xo + xd) / 2.0, row))
     return arcs
 
 

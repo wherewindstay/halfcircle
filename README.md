@@ -67,6 +67,29 @@ inspect(flow, {"GDP per capita": node.sort_values("gdpc", ascending=False),
 
 Each panel is annotated with its mean-centre distance and marks the centre in red.
 
+## Two crops on one axis
+
+`load_faostat()` ships reported trade in wheat and green coffee for 2000–2024, taken from the FAOSTAT Detailed Trade Matrix. Drawn on the same income axis, the two sit on opposite sides of it.
+
+![Wheat and green coffee in 2024 on the same income axis. Coffee's arcs all run one way; wheat's run both ways](faostat.png)
+
+```python
+from halfcircle import halfcircle, load_faostat, load_faostat_nodes
+
+nodes = load_faostat_nodes().dropna(subset=["gdpc"])
+order = nodes.sort_values("gdpc", ascending=False)
+
+flow, _ = load_faostat("coffee", 2024, min_volume=500, top_k=50)
+halfcircle(flow, order, orientation="vertical", drop_missing=True,
+           labels={"Brazil", "Colombia", "Viet Nam", "United States of America"})
+```
+
+Coffee's mean centre sits at −0.190: nearly every arc runs from a lower-income grower to a higher-income buyer. Wheat's sits at +0.074, near enough to the middle that income explains little about it — its large exporters are high-income themselves (the United States, Australia, Canada, France) and ship in both directions.
+
+Two things worth borrowing from the code above. Giving `labels` a **set of names** labels only those nodes; with fifty countries on the line, printing every name produces a smear, and a few anchors read better. And the `dropna` before sorting is not decoration — `sort_values` puts missing values last, which on this axis means "poorest". Taiwan has no GDP figure in FAOSTAT, so without that line it would be drawn at the bottom of the income axis.
+
+`examples/faostat.py` regenerates the figure.
+
 ## Is the pattern real?
 
 A diagram always looks like *something*. `order_significance` asks whether your ordering beats an arbitrary one: it shuffles the nodes hundreds of times, builds the null distribution of mean-centre offsets, and reports where the real ordering falls.
@@ -130,9 +153,10 @@ Each row carries the mean centre, its distance from the origin, how far it moved
 | `track(periods, nodes, ...)` | Mean centre per period, with movement between them |
 | `plot_track(periods, nodes, ...)` | Draw the path the mean centre traces over time |
 | `node_positions`, `arc_points`, `flow_arcs` | Geometry only, if you want to draw it yourself |
-| `load_trade()`, `load_flow()`, `load_nodes()` | The bundled example data |
+| `load_trade()`, `load_flow()`, `load_nodes()` | Virtual land trade — the R package's data |
+| `load_faostat(item, year, ...)` | FAOSTAT wheat and coffee trade, 2000–2024 |
 
-Styling follows the R package: `flow_color`, `flow_width`, `node_color` and `labels` each take a single value or one value per row, so you can colour arcs by attribute or highlight a single node.
+Styling follows the R package: `flow_color`, `flow_width`, `node_color` and `labels` each take a single value or one value per row, so you can colour arcs by attribute or highlight a single node. Per-row values are matched to the rows of `flow` you passed in, so they stay aligned when `drop_missing` skips some. `labels` also accepts a set of node names, which is order-independent and therefore safe to reuse across `inspect` panels.
 
 ## More examples
 
@@ -194,6 +218,10 @@ install.packages("r-legacy/halfcircle_0.1.0.tar.gz", repos = NULL, type = "sourc
 ## Example data
 
 `load_trade()` returns land embodied in crop trade between 154 countries (10,866 pairs; vegetable, fruit, wheat and soybean, in hectares) together with country attributes — coordinates, population, GDP per capita, cultivated area, water use and income level — to sort by. Same data as the R package.
+
+`load_faostat()` returns reported trade in wheat and green coffee for 2000, 2005, 2010, 2015, 2020 and 2024 (22,907 flows, in tonnes), with attributes for 242 countries. Built from the [FAOSTAT Detailed Trade Matrix](https://www.fao.org/faostat/en/#data/TM) using the `Import quantity` element, so each flow is the importer's own report.
+
+Two things to know before using it as data rather than as an example. Node attributes are fixed at 2020 even though trade spans 2000–2024: if the ordering moved year to year, a shifting trajectory could not be told apart from a shifting axis. And FAOSTAT's `China` code, which sums the mainland, Hong Kong, Macao and Taiwan, is excluded — it is reported alongside its own parts, so keeping it would count one country twice.
 
 ## References
 

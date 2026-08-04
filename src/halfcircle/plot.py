@@ -36,8 +36,10 @@ def halfcircle(flow: pd.DataFrame, nodes, *, orientation: str = "horizontal",
         A single value, or one value per row of ``flow`` for per-arc control.
         ``flow_width="proportional"`` scales linewidth to volume.
     labels
-        ``True`` for node names, ``False``/``None`` for none, or a sequence of
-        your own labels.
+        ``True`` for node names, ``False``/``None`` for none, a sequence of your
+        own labels (one per node), or a **set of names** to label only those.
+        With 50-odd nodes the names overlap into a smear, so a set of the dozen
+        you actually want to read is usually what you mean.
 
     Examples
     --------
@@ -59,8 +61,12 @@ def halfcircle(flow: pd.DataFrame, nodes, *, orientation: str = "horizontal",
     arcs = flow_arcs(flow, nodes, orientation=orientation, n=arc_points,
                      drop_missing=drop_missing)
     volumes = np.array([a.volume for a in arcs], dtype=float)
-    widths = _resolve_widths(flow_width, volumes, len(arcs))
-    colors = _per_arc(flow_color, len(arcs), "flow_color")
+    # Self-flows and (under drop_missing) flows to unlisted nodes are not drawn,
+    # so there are usually fewer arcs than rows. Per-arc styling may be given
+    # against either count; rows says which flow row each arc came from.
+    rows = [a.row for a in arcs]
+    widths = _resolve_widths(flow_width, volumes, len(arcs), rows, len(flow))
+    colors = _per_arc(flow_color, len(arcs), "flow_color", rows, len(flow))
 
     for arc, w, c in zip(arcs, widths, colors):
         ax.plot(arc.x, arc.y, lw=w, color=c, alpha=flow_alpha,
@@ -130,16 +136,23 @@ def inspect(flow: pd.DataFrame, orders: dict, *, orientation: str = "horizontal"
 
     Each panel is annotated with how far its mean centre sits from the origin.
 
+    Extra keyword arguments go to :func:`halfcircle`. Note that ``labels`` as a
+    positional sequence would be wrong here — each panel sorts its nodes
+    differently, so the same list would put names on different countries. Pass a
+    **set** of names instead.
+
     >>> inspect(flow, {"by GDP": node.sort_values("gdpc"),
     ...                "by population": node.sort_values("pop_total"),
-    ...                "alphabetical": node.sort_values("country")})
+    ...                "alphabetical": node.sort_values("country")},
+    ...         labels={"China", "United States of America"})
     """
     import matplotlib.pyplot as plt
 
     n = len(orders)
     if n == 0:
         raise ValueError("orders is empty")
-    ncols = ncols or min(3, n)
+    # Four panels read better as 2x2 than as 3+1 with two blanks.
+    ncols = ncols or (2 if n == 4 else min(3, n))
     nrows = -(-n // ncols)
     fig, axes = plt.subplots(nrows, ncols, figsize=(4.2 * ncols, 4.4 * nrows))
     axes = np.atleast_1d(axes).ravel()
@@ -157,7 +170,7 @@ def inspect(flow: pd.DataFrame, orders: dict, *, orientation: str = "horizontal"
     return fig, axes[:n]
 
 
-def _resolve_widths(flow_width, volumes, n):
+def _resolve_widths(flow_width, volumes, n, rows=None, n_flow=None):
     if isinstance(flow_width, str):
         if flow_width != "proportional":
             raise ValueError("flow_width must be 'proportional' or numeric")
@@ -167,16 +180,27 @@ def _resolve_widths(flow_width, volumes, n):
         if peak <= 0:
             return np.ones(n)
         return np.maximum(_MAX_WIDTH * volumes / peak, 0.2)
-    return _per_arc(flow_width, n, "flow_width")
+    return _per_arc(flow_width, n, "flow_width", rows, n_flow)
 
 
-def _per_arc(value, n, name):
+def _per_arc(value, n, name, rows=None, n_flow=None):
+    """One value per arc, from a scalar or a sequence.
+
+    A sequence may be given per arc, or per row of the original flow table —
+    the natural thing to write is ``[colour_for(o) for o in flow["O"]]``, which
+    is the second. Those two lengths differ whenever an arc was skipped, so
+    values given per row are selected down using ``rows``. Getting this wrong
+    used to shift every colour by however many arcs had been dropped.
+    """
     if isinstance(value, (str, int, float)) or value is None:
         return [value] * n
     seq = list(value)
-    if len(seq) != n:
-        raise ValueError(f"{name} has {len(seq)} values but there are {n} items")
-    return seq
+    if len(seq) == n:
+        return seq
+    if rows is not None and n_flow is not None and len(seq) == n_flow:
+        return [seq[r] for r in rows]
+    expected = f"{n} arcs" if n_flow in (None, n) else f"{n} arcs or {n_flow} flow rows"
+    raise ValueError(f"{name} has {len(seq)} values but there are {expected}")
 
 
 def _resolve_labels(labels, pos):
@@ -184,6 +208,11 @@ def _resolve_labels(labels, pos):
         return None
     if labels is True:
         return list(pos.index)
+    if isinstance(labels, (set, frozenset)):
+        # A set of names: label those nodes and leave the rest blank. Unlike a
+        # positional list this does not depend on the ordering, so the same set
+        # can be reused across panels of `inspect` that sort nodes differently.
+        return [n if n in labels else "" for n in pos.index]
     seq = list(labels)
     if len(seq) != len(pos):
         raise ValueError(f"labels has {len(seq)} values but there are {len(pos)} nodes")

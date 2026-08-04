@@ -67,6 +67,29 @@ inspect(flow, {"1인당 GDP": node.sort_values("gdpc", ascending=False),
 
 각 패널에 평균중심까지의 거리가 표시되고 그 위치가 붉은 점으로 찍힙니다.
 
+## 두 작물을 같은 축에 놓기
+
+`load_faostat()`은 FAOSTAT Detailed Trade Matrix에서 뽑은 밀과 커피(생두)의 2000~2024년 교역을 담고 있습니다. 같은 소득축 위에 그리면 두 작물이 축의 반대편에 자리합니다.
+
+![2024년 밀과 커피를 같은 소득축에 그린 그림. 커피의 반원은 모두 한쪽으로, 밀은 양쪽으로 흐릅니다](faostat.png)
+
+```python
+from halfcircle import halfcircle, load_faostat, load_faostat_nodes
+
+nodes = load_faostat_nodes().dropna(subset=["gdpc"])
+order = nodes.sort_values("gdpc", ascending=False)
+
+flow, _ = load_faostat("coffee", 2024, min_volume=500, top_k=50)
+halfcircle(flow, order, orientation="vertical", drop_missing=True,
+           labels={"Brazil", "Colombia", "Viet Nam", "United States of America"})
+```
+
+커피의 평균중심은 −0.190입니다. 거의 모든 반원이 소득이 낮은 생산국에서 높은 소비국으로 향합니다. 밀은 +0.074로 가운데에 가깝습니다. 주요 수출국(미국·호주·캐나다·프랑스)이 그 자체로 고소득국이고 양방향으로 나가기 때문에, 소득축으로 설명되는 것이 적습니다.
+
+위 코드에서 두 가지를 눈여겨봐 두면 좋습니다. `labels`에 **이름 집합**을 주면 그 노드에만 이름이 붙습니다 — 50개국을 한 줄에 세우고 이름을 다 찍으면 서로 뭉개지므로 기준점 몇 개만 두는 편이 읽힙니다. 그리고 정렬 전의 `dropna`는 장식이 아닙니다. `sort_values`는 결측을 맨 뒤로 보내는데, 이 축에서 맨 뒤는 "가장 가난함"을 뜻합니다. 대만은 FAOSTAT에 GDP가 없어서, 저 줄이 없으면 소득축 최하단에 그려집니다.
+
+그림은 `examples/faostat.py`로 다시 만들 수 있습니다.
+
 ## 이 패턴이 진짜인가
 
 다이어그램은 언제나 무언가처럼 보입니다. `order_significance`는 그 정렬이 아무 정렬보다 나은지 묻습니다 — 노드를 수백 번 무작위로 섞어 평균중심 거리의 귀무분포를 만들고, 실제 정렬이 그 안에서 어디에 있는지 알려줍니다.
@@ -130,9 +153,10 @@ track(periods, node.sort_values("income_level"), orientation="vertical")
 | `track(periods, nodes, ...)` | 시기별 평균중심과 이동량 |
 | `plot_track(periods, nodes, ...)` | 평균중심이 그리는 궤적 |
 | `node_positions`, `arc_points`, `flow_arcs` | 기하 계산만 — 직접 그리고 싶을 때 |
-| `load_trade()`, `load_flow()`, `load_nodes()` | 동봉된 예제 데이터 |
+| `load_trade()`, `load_flow()`, `load_nodes()` | 가상 토지 교역 — R 패키지의 데이터 |
+| `load_faostat(item, year, ...)` | FAOSTAT 밀·커피 교역, 2000~2024 |
 
-`flow_color`, `flow_width`, `node_color`, `labels`는 R 패키지와 같이 단일 값 또는 행마다 하나씩 받습니다. 속성별로 색을 나누거나 특정 노드만 강조할 수 있습니다.
+`flow_color`, `flow_width`, `node_color`, `labels`는 R 패키지와 같이 단일 값 또는 행마다 하나씩 받습니다. 속성별로 색을 나누거나 특정 노드만 강조할 수 있습니다. 행마다 준 값은 넘겨준 `flow`의 행에 맞춰지므로, `drop_missing`으로 일부가 빠져도 어긋나지 않습니다. `labels`는 노드 이름의 집합도 받습니다 — 순서와 무관하므로 `inspect`의 여러 패널에 그대로 써도 됩니다.
 
 ## 사용 예시
 
@@ -194,6 +218,10 @@ install.packages("r-legacy/halfcircle_0.1.0.tar.gz", repos = NULL, type = "sourc
 ## 예제 데이터
 
 `load_trade()`는 154개국 사이 작물 교역에 내재된 토지(10,866쌍 · 채소·과일·밀·대두, 헥타르)와, 정렬 기준으로 쓸 국가 속성(좌표·인구·1인당 GDP·경작면적·물 사용량·소득수준)을 함께 돌려줍니다. R 패키지와 같은 데이터입니다.
+
+`load_faostat()`은 밀과 커피(생두)의 2000·2005·2010·2015·2020·2024년 교역(22,907건, 톤)과 242개국 속성을 돌려줍니다. [FAOSTAT Detailed Trade Matrix](https://www.fao.org/faostat/en/#data/TM)의 `Import quantity` 항목으로 만들었으므로 각 흐름은 수입국이 보고한 값입니다.
+
+예제가 아니라 자료로 쓸 때 알아둘 점이 둘 있습니다. 교역은 2000~2024년인데 노드 속성은 2020년으로 고정돼 있습니다. 정렬 축이 해마다 움직이면 궤적이 움직였을 때 흐름이 변한 것인지 축이 변한 것인지 구분할 수 없기 때문입니다. 그리고 FAOSTAT의 `China` 코드(본토·홍콩·마카오·대만의 합계)는 제외했습니다. 개별 코드와 나란히 보고되므로 그대로 두면 한 나라가 두 번 세어집니다.
 
 ## 참고문헌
 
