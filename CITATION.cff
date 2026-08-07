@@ -13,8 +13,9 @@ keywords:
   - "trade"
   - "spatial interaction"
   - "Python"
-license: "MIT"
-license-url: "https://github.com/wherewindstay/halfcircle/blob/main/LICENSE-CONTENT"
+license:
+  - "MIT"
+  - "CC-BY-4.0"
 repository-code: "https://github.com/wherewindstay/halfcircle"
 url: "https://wherewindstay.github.io/halfcircle/"
 type: "software"
