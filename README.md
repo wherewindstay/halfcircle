@@ -242,6 +242,12 @@ Original R package and method by **Sohyun Park** and **Ningchuan Xiao**. Python 
 | Bundled example data | Terms of FAOSTAT and the World Bank (see Example data above) |
 | Original R package | MIT, © 2018 Sohyun Park (`r-legacy/`) |
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21842394.svg)](https://doi.org/10.5281/zenodo.21842394)
+
+To cite this work:
+
+> Park, S. (2026). *halfcircle: Halfcircle diagrams for bidirectional flow data* (v1.0.0). Zenodo. https://doi.org/10.5281/zenodo.21842394
+
 Reuse is welcome. Attribution is a condition of the content license, not a courtesy — credit
 Sohyun Park and link back. If you use this in research, please cite it; GitHub's
 **Cite this repository** button reads [CITATION.cff](CITATION.cff) and will give you BibTeX.
