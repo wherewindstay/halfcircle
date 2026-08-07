@@ -233,6 +233,15 @@ Xiao, N. and Chun, Y. (2009). Visualizing migration flows using kriskograms. *Ca
 
 Original R package and method by **Sohyun Park** and **Ningchuan Xiao**. Python rewrite built with the help of **Anthropic Claude**, verified against the R implementation's geometry and mean-centre formulas.
 
-## License
+## License and citation
 
-MIT — see [LICENSE](LICENSE).
+| What | License |
+|---|---|
+| Source code | [MIT](LICENSE) |
+| Written content, figures, analytical results | [CC BY 4.0](LICENSE-CONTENT) |
+| Bundled example data | Terms of FAOSTAT and the World Bank (see Example data above) |
+| Original R package | MIT, © 2018 Sohyun Park (`r-legacy/`) |
+
+Reuse is welcome. Attribution is a condition of the content license, not a courtesy — credit
+Sohyun Park and link back. If you use this in research, please cite it; GitHub's
+**Cite this repository** button reads [CITATION.cff](CITATION.cff) and will give you BibTeX.

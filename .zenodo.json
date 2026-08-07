@@ -1,0 +1,28 @@
+{
+  "title": "halfcircle: Halfcircle diagrams for bidirectional flow data",
+  "description": "A Python rewrite of the halfcircle R package (CRAN, 2018) for inspecting bidirectional flow data such as migration and trade.",
+  "upload_type": "software",
+  "license": "MIT",
+  "access_right": "open",
+  "keywords": [
+    "flow data",
+    "visualization",
+    "migration",
+    "trade",
+    "spatial interaction",
+    "Python"
+  ],
+  "creators": [
+    {
+      "name": "Park, Sohyun",
+      "affiliation": "George Mason University Korea"
+    }
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://wherewindstay.github.io/halfcircle/",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    }
+  ]
+}

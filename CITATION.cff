@@ -1,0 +1,21 @@
+cff-version: "1.2.0"
+message: "If you use this work, please cite it as below."
+title: "halfcircle: Halfcircle diagrams for bidirectional flow data"
+abstract: "A Python rewrite of the halfcircle R package (CRAN, 2018) for inspecting bidirectional flow data such as migration and trade."
+authors:
+  - family-names: "Park"
+    given-names: "Sohyun"
+    affiliation: "George Mason University Korea"
+keywords:
+  - "flow data"
+  - "visualization"
+  - "migration"
+  - "trade"
+  - "spatial interaction"
+  - "Python"
+license: "MIT"
+license-url: "https://github.com/wherewindstay/halfcircle/blob/main/LICENSE-CONTENT"
+repository-code: "https://github.com/wherewindstay/halfcircle"
+url: "https://wherewindstay.github.io/halfcircle/"
+type: "software"
+year: 2026
