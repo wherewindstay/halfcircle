@@ -238,7 +238,7 @@ Original R package and method by **Sohyun Park** and **Ningchuan Xiao**. Python 
 | What | License |
 |---|---|
 | Source code | [MIT](LICENSE) |
-| Written content, figures, analytical results | [CC BY 4.0](LICENSE-CONTENT) |
+| Written content, figures, analytical results | [CC BY 4.0](CONTENT-LICENSE.md) |
 | Bundled example data | Terms of FAOSTAT and the World Bank (see Example data above) |
 | Original R package | MIT, © 2018 Sohyun Park (`r-legacy/`) |
 

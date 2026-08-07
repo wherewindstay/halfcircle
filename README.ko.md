@@ -238,7 +238,7 @@ Xiao, N. and Chun, Y. (2009). Visualizing migration flows using kriskograms. *Ca
 | 무엇 | 라이선스 |
 |---|---|
 | 소스 코드 | [MIT](LICENSE) |
-| 글·그림·분석 결과 | [CC BY 4.0](LICENSE-CONTENT) |
+| 글·그림·분석 결과 | [CC BY 4.0](CONTENT-LICENSE.md) |
 | 동봉된 예제 데이터 | FAOSTAT · 세계은행의 이용 조건 (위 「예제 데이터」 참조) |
 | R 원본 패키지 | MIT, © 2018 박소현 (`r-legacy/`) |
 
