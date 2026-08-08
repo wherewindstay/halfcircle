@@ -6,7 +6,7 @@ Read bidirectional flow data at a glance.
 
 ![Two halfcircle diagrams of the same trade flows, ordered by GDP per capita and by population](preview.png)
 
-Nodes sit on a line through the centre of a circle. Each flow is drawn as a half circle running clockwise from origin to destination — so a flow and its reverse bulge to opposite sides and never overlap. Reorder the nodes and the picture either scatters into noise or snaps into a pattern. **That comparison is the analysis.**
+Nodes sit on a line through the centre of a circle. Each flow is drawn as a half circle running clockwise from origin to destination — so a flow and its reverse bulge to opposite sides and never overlap. Reorder the nodes and the picture either scatters or settles into a pattern; that comparison is how the tool is meant to be used.
 
 This is a Python rewrite of the [R package of the same name](https://cran.r-project.org/src/contrib/Archive/halfcircle/) (Park & Xiao, CRAN 2018), extended with tools for comparing orderings systematically.
 
@@ -32,7 +32,7 @@ halfcircle(flow, node, orientation="vertical", labels=False, drop_missing=True)
 
 ## Finding the ordering that matters
 
-The diagram only says something once you compare orderings. `compare_orders` does that arithmetically: it reports how far the mean centre of all arcs sits from the origin under each ordering. A centre near zero means the flows cancel out; a centre pushed far to one side means volume runs consistently in one direction.
+The diagram becomes informative once you compare orderings. `compare_orders` does that arithmetically: it reports how far the mean centre of all arcs sits from the origin under each ordering. A centre near zero means the flows cancel out; a centre pushed far to one side means volume runs consistently in one direction.
 
 ```python
 from halfcircle import compare_orders
@@ -53,7 +53,7 @@ Cultivated area   -0.632828    0.028257  0.633458
    Alphabetical    0.080736    0.061077  0.101236
 ```
 
-Ordering countries by population pulls the mean centre furthest off origin (0.72), while alphabetical ordering leaves it near the middle (0.10) — as a meaningless ordering should. Population, not wealth, is what this particular flow is organised around.
+Ordering countries by population pulls the mean centre furthest off origin (0.72), while alphabetical ordering leaves it near the middle (0.10), which is what a meaningless ordering would be expected to give. Population, not wealth, is what this particular flow is organised around.
 
 To see it rather than read it:
 
