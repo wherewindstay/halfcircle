@@ -25,6 +25,5 @@ What this license does NOT cover:
     provider (Statistics Korea and others; see the README).
   - Third-party components bundled here, which keep their own licenses.
 
-Attribution is a condition of this license, not a courtesy. Reuse without
-credit is a licence violation, and reuse that presents this analysis as
-someone else's own work is also a matter of research integrity.
+Attribution is a condition of this license. Reuse without credit is a
+licence violation.

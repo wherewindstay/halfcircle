@@ -248,6 +248,5 @@ To cite this work:
 
 > Park, S. (2026). *halfcircle: Halfcircle diagrams for bidirectional flow data* (v1.0.0). Zenodo. https://doi.org/10.5281/zenodo.21842394
 
-Reuse is welcome. Attribution is a condition of the content license, not a courtesy — credit
-Sohyun Park and link back. If you use this in research, please cite it; GitHub's
+Reuse is welcome. Please credit Sohyun Park and cite the work. GitHub's
 **Cite this repository** button reads [CITATION.cff](CITATION.cff) and will give you BibTeX.
